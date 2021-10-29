@@ -1,0 +1,9 @@
+farmer_name,orange_variety,crop_year,number_of_trees,kilos_produced,year_rain
+Pierre,Golden,2015,2400,82500,400
+Pierre,Golden,2016,2400,51000,180
+Olek,Golden,2017,4000,78000,250
+Simon,SuperSun,2017,3500,75000,250
+Pierre,Golden,2017,2400,62500,250
+Olek,Golden,2018,4100,69000,150
+Simon,SuperSun,2018,3500,74000,150
+Pierre,Golden,2018,2450,64500,200
