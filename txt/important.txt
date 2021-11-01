@@ -1,0 +1,42 @@
+aws iam list-policies --scope Local --query 'Policies[0].Arn'
+aws iam get-policy --policy-arn arn:aws:iam::159757251122:policy/lab_policy
+aws iam get-policy-version --policy-arn arn:aws:iam::159757251122:policy/lab_policy --version-id v1 > lab_policy.json 
+aws iam list-policies --only-attached 
+
+
+
+
+# list all policies
+aws iam list-policies
+
+# filter result to list only the customer managed policies
+aws iam list-policies --scope Local
+
+# Get Arn and version id from filtered result 
+alias Arn="aws iam list-policies --scope Local --query 'Policies[0].Arn'"
+alias VersionId="aws iam list-policies --scope Local --query 'Policies[0].DefaultVersionId'"
+
+# Remove quotes from Arnd and VersionId
+alias NewId='VersionId | tr -d \"'
+alias NewArn='Arn | tr -d \"'
+
+# Use results to download policy document for lab_policy  
+aws iam get-policy-version --policy-arn $(NewArn) --version-id $(NewId)
+
+# Save document to lab_policy.json
+aws iam get-policy-version --policy-arn $(NewArn) --version-id $(NewId) > lab_policy.json 
+
+# confirm if lab_policy.json exits and view its content
+ls
+cat lab_policy.json 
+
+
+
+
+# list all policies
+all_policies = $(aws iam list--policies)
+
+
+
+
+
