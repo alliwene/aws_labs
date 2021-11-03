@@ -32,9 +32,97 @@ cat lab_policy.json
 
 
 
-
 # list all policies
 all_policies = $(aws iam list--policies)
+
+
+
+AKIAY2ZMX6HWWT6B4RXX
+4rmOxNv0davF9GZ0d8G0vKBZztJhcMSWyxwSeyz1
+
+aws iam create-login-profile --user-name awsS3user --password Training123!
+
+607294845421
+
+arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+aws iam attach-user-policy --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess --user-name awsS3user
+
+uallison256
+
+aws s3 website s3://uallison256/ --index-document index.html
+
+aws s3 cp /home/ec2-user/sysops-activity-files/static-website/ s3://uallison256/ --recursive --acl public-read 
+
+aws s3 sync /home/ec2-user/sysops-activity-files/static-website/ s3://uallison256/ --acl public-read 
+
+aws iam create-user --user-name aswsS3user 
+
+
+
+
+
+
+
+
+## EC2 Lab
+
+34.217.91.133
+
+# Set the Region
+AZ=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`
+export AWS_DEFAULT_REGION=${AZ::-1}
+
+# Obtain latest Linux AMI
+AMI=$(aws ssm get-parameters --names /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 --query 'Parameters[0].[Value]' --output text)
+echo $AMI
+
+SUBNET=$(aws ec2 describe-subnets --filters 'Name=tag:Name,Values=Public Subnet' --query Subnets[].SubnetId --output text)
+
+SG=$(aws ec2 describe-security-groups --filters Name=group-name, Values=WebSecurityGroup --query SecurityGroups[].GroupId --output text)
+
+wget https://aws-tc-largeobjects.s3.amazonaws.com/CUR-TF-100-RESTRT-1/171-lab-%5BJAWS%5D-create-ec2/UserData.txt
+
+INSTANCE=$(\
+aws ec2 run-instances \
+--image-id $AMI \
+--subnet-id $SUBNET \
+--security-group-ids $SG \
+--user-data file:///home/ec2-user/UserData.txt \
+--instance-type t3.micro \
+--tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=Web Server}]' \
+--query 'Instances[*].InstanceId' \
+--output text \
+)
+
+aws ec2 describe-instances --instance-ids $INSTANCE
+
+
+aws ec2 describe-instances --instance-ids $INSTANCE --query 'Reservations[].Instances[].State.Name' --output text
+
+aws ec2 describe-instances --instance-ids $INSTANCE --query Reservations[].Instances[].PublicDnsName --output text
+
+aws ec2 attach-internet-gateway --vpc-id "vpc-0eab502aec2b2f872" --internet-gateway-id "igw-093b81947f8e263d2" --region us-west-2
+
+
+#!/bin/bash
+# Install Apache Web Server
+yum update -y
+yum install -y httpd
+
+# Turn on web server
+systemctl enable httpd.service
+systemctl start  httpd.service
+
+
+systemctl status httpd.service
+
+sudo chown -R /var/www/html/
+sudo chown -R apache:apache /var/www/html/ 
+
+
+sudo chown -R ec2-user /var/www/html/ 
+
 
 
 
