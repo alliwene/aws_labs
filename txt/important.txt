@@ -124,6 +124,19 @@ sudo chown -R apache:apache /var/www/html/
 sudo chown -R ec2-user /var/www/html/ 
 
 
+# dynamic website activity 
+cd ~/sysops-activity-files/starters
+--key-name $key \
+
+scp -i labsuser.pem -r ec2-user@54.69.69.77:/home/ec2-user/sysops-activity-files/starters /home/alli/Downloads
+
+http://34.219.36.133/cafe/
+
+
+sudo yum install -y nmap
+
+nmap -Pn <public-ip> 
+
 
 
 
