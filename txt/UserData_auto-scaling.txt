@@ -1,0 +1,14 @@
+#!/bin/bash
+yum update -y --security
+amazon-linux-extras install epel -y
+yum -y install httpd php stress
+systemctl enable httpd.service
+systemctl start httpd
+cd /var/www/html
+wget https://aws-tc-largeobjects.s3.amazonaws.com/ILT-TF-100-TUHAWA-1/3-lab-autoscaling-linux/scripts/ec2-stress.zip
+unzip ec2-stress.zip
+
+echo 'UserData has been successfully executed. ' >> /home/ec2-user/result
+find -wholename /root/.*history -wholename /home/*/.*history -exec rm -f {} \;
+find / -name 'authorized_keys' -exec rm -f {} \;
+rm -rf /var/lib/cloud/data/scripts/*
