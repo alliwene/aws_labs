@@ -1,0 +1,37 @@
+1. Create S3 Bucket, name has to be unique 
+2. Create SNS Topic and Subscription
+	- Click on standard and type in a name, then create
+		- Copy the topic ARN and keep somewhere 
+	- Click on create subscription 
+		- Topic ARN: The topic you just created ARN would be there
+		- Protocol: Email
+		- Endpoint: Your email address 
+		- Then create
+		- You would get an email to confirm the subscription 
+3. Create Lambda function 
+	- Use author from scratch
+	- Name: Type in a name eg 'wordcount'
+	- Runtime: Python
+	- Permissions: Use an existing role, then select LambdaAccessRole
+	- Create the function
+	- Click on add trigger 
+		- Select S3
+		- Bucket: Click on the bucket you created 
+		- Event type: PUT
+		- Suffix: .txt
+		- Create it
+	- CLick on Add destination 
+		- Condition: On success 
+		- Destination type: SNS topic 
+		- Destination: The name of the topic you created 
+		- Create it 
+	- In the code section on Lambda, 
+		- paste the contents of cohort1.py that is in the group
+		- replace TargetArn with the Topic arn you copied 
+		- Click on deploy 
+4. Upload any .txt file in S3, it would trigger the lambda function 
+5. Go to cloudwatch 
+	- Click on Log groups
+	- Click on /aws/lambda/countwords
+	- A stream would have been created, click on it and you'll see the output of the code 
+6. You would also get an email

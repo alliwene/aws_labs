@@ -1,0 +1,18 @@
+/cafe/dbUrl: ec2-34-214-13-153.us-west-2.compute.amazonaws.com
+/cafe/dbName: cafe_db
+/cafe/dbUser: root
+/cafe/dbPassword: Re:Start!9
+
+TopicArn: arn:aws:sns:us-west-2:405415389443:salesAnalysisReportTopic
+salesAnalysisReportRoleARN: arn:aws:iam::405415389443:role/salesAnalysisReportRole
+
+scp -i labsuser.pem -r ec2-user@34.217.15.72:/home/ec2-user/activity-files /home/alli/Downloads
+
+aws lambda create-function \
+--function-name salesAnalysisReport \
+--runtime python3.7 \
+--zip-file fileb://salesAnalysisReport-v2.zip \
+--handler salesAnalysisReport.lambda_handler \
+--region us-west-2 \
+--role arn:aws:iam::405415389443:role/salesAnalysisReportRole 
+

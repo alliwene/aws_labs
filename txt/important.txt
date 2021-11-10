@@ -138,6 +138,30 @@ sudo yum install -y nmap
 nmap -Pn <public-ip> 
 
 
+## Using Auto Scaling in AWS (Linux)
+
+curl http://169.254.169.254/latest/dynamic/instance-identity/document | grep region
+
+aws ec2 run-instances --key-name vockey --instance-type t3.micro --image-id ami-0e5b6b6a9f3db6db8 --user-data file:///home/ec2-user/UserData.txt --security-group-ids sg-05ae866561802023b --subnet-id subnet-09f3fd15163b52151 --associate-public-ip-address --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=WebServerBaseImage}]' --output text --query 'Instances[*].InstanceId'
+
+aws ec2 wait instance-running --instance-ids i-09071ae814fdfd08c
+
+# create AMI
+aws ec2 create-image --name WebServer --instance-id i-09071ae814fdfd08c
+
+
+
+AMIID	ami-0e5b6b6a9f3db6db8
+HTTPACCESS	sg-05ae866561802023b
+COMMANDHOSTIP	34.212.201.83
+KEYNAME	vockey
+SUBNETID	subnet-09f3fd15163b52151
+			i-09071ae814fdfd08c
+			ec2-54-149-131-90.us-west-2.compute.amazonaws.com
+			"ImageId": "ami-0264d6f835573b3dd"
+			
+
+
 
 
 

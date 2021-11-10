@@ -1,0 +1,99 @@
+aws ec2 describe-instances \
+--filters "Name=tag:Name,Values= CafeInstance" \
+--query "Reservations[*].Instances[*].[InstanceId,InstanceType,PublicDnsName,PublicIpAddress,Placement.AvailabilityZone,VpcId,SecurityGroups[*].GroupId]"
+
+aws ec2 describe-vpcs --vpc-ids  vpc-01423873dc9dc76b3 \
+--filters "Name=tag:Name,Values= Cafe VPC" \
+--query "Vpcs[*].CidrBlock"
+
+aws ec2 describe-subnets \
+--filters "Name=vpc-id,Values=vpc-01423873dc9dc76b3" \
+--query "Subnets[*].[SubnetId,CidrBlock]"
+
+aws ec2 describe-availability-zones \
+--filters "Name=region-name,Values=us-west-2" \
+--query "AvailabilityZones[*].ZoneName"
+
+aws ec2 create-security-group \
+--group-name CafeDatabaseSG \
+--description "Security group for Cafe database" \
+--vpc-id vpc-01423873dc9dc76b3
+
+aws ec2 authorize-security-group-ingress \
+--group-id sg-0e72831ecb936244c \
+--protocol tcp --port 3306 \
+--source-group sg-0f65b6628e65adb2c
+
+aws ec2 create-subnet \
+--vpc-id vpc-01423873dc9dc76b3 \
+--cidr-block 10.200.2.0/23 \
+--availability-zone us-west-2a
+
+aws ec2 create-subnet \
+--vpc-id vpc-01423873dc9dc76b3 \
+--cidr-block 10.200.10.0/23 \
+--availability-zone us-west-2b
+
+aws rds create-db-subnet-group \
+--db-subnet-group-name "CafeDB Subnet Group" \
+--db-subnet-group-description "DB subnet group for Cafe" \
+--subnet-ids subnet-08f237b57f3cb959d subnet-0a323665f22dde6cd \
+--tags "Key=Name,Value= CafeDatabaseSubnetGroup"
+
+aws rds describe-db-engine-versions --engine mariadb
+
+aws rds create-db-instance \
+--db-instance-identifier CafeDBInstance \
+--engine mariadb \
+--engine-version 10.2.40 \
+--db-instance-class db.t3.micro \
+--allocated-storage 20 \
+--availability-zone us-west-2a \
+--db-subnet-group-name "CafeDB Subnet Group" \
+--vpc-security-group-ids sg-0e72831ecb936244c \
+--no-publicly-accessible \
+--master-username root --master-user-password 'Re:Start!9'
+
+aws rds describe-db-instances \
+--db-instance-identifier CafeDBInstance \
+--query "DBInstances[*].[Endpoint.Address,AvailabilityZone,PreferredBackupWindow,BackupRetentionPeriod,DBInstanceStatus]"
+
+
+mysqldump --user=root --password='Re:Start!9' \
+--databases cafe_db --add-drop-database > cafedb-backup.sql
+
+mysql --user=root --password='Re:Start!9' \
+--host=cafedbinstance.c2dvifzteknn.us-west-2.rds.amazonaws.com  \
+< cafedb-backup.sql
+
+mysql --user=root --password='Re:Start!9' \
+--host=cafedbinstance.c2dvifzteknn.us-west-2.rds.amazonaws.com \
+cafe_db
+
+CafeInstance Instance ID: i-03e8132e946cd7e2d
+CafeInstance Instance Type: t3.small
+CafeInstance Public DNS Name: ec2-34-214-37-0.us-west-2.compute.amazonaws.com
+CafeInstance Public IP Address: 34.214.37.0
+CafeInstance Availability Zone: us-west-2a
+CafeInstance VPC ID: vpc-01423873dc9dc76b3
+CafeSecurityGroup Group ID: sg-0f65b6628e65adb2c
+Cafe VPC IPv4 CIDR block: 10.200.0.0/20
+Cafe Public Subnet 1 Subnet ID: subnet-02a90d68191736080
+Cafe Public Subnet 1 IPv4 CIDR block: 10.200.0.0/24
+List of Availability Zones in the region: us-west-2a, us-west-2b,  us-west-2c, and us-west-2d
+Number of orders: 2 
+CafeDatabaseSG Group ID: sg-0e72831ecb936244c
+Cafe Private Subnet 1 ID: subnet-08f237b57f3cb959d
+Cafe Private Subnet 2 ID: subnet-0a323665f22dde6cd  
+RDS Instance Database Endpoint Address: cafedbinstance.c2dvifzteknn.us-west-2.rds.amazonaws.com 
+
+
+
+
+An error occurred (InvalidParameterCombination) when calling the CreateDBInstance operation: Cannot find version 10.2.11 for mariadb
+
+
+
+
+
+
