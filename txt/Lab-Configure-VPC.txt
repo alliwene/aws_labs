@@ -1,0 +1,17 @@
+1: Create a VPC
+2: Create Subnets
+	 The VPC has a CIDR of 10.0.0.0/16, which includes all 10.0.x.x IP addresses. The subnet you just created has a CIDR of 10.0.0.0/24, which includes all 10.0.0.x IP addresses.
+
+	 The CIDR block of 10.0.2.0/23 includes all IP addresses that start with 10.0.2.x and 10.0.3.x. This is twice as large as the public subnet because most resources should be kept in private subnets, unless they specifically need to be accessible from the internet.
+3: Create an Internet Gateway
+4: Configure Route Tables
+5: Launch a Bastion Server in the Public Subnet
+6: Create a NAT Gateway
+Optional Task: Test the Private Subnet
+	#!/bin/bash
+	# Turn on password authentication for lab challenge
+	echo 'lab-password' | passwd ec2-user --stdin
+	sed -i 's|[#]*PasswordAuthentication no|PasswordAuthentication yes|g' /etc/ssh/sshd_config
+	systemctl restart sshd.service
+Optional Task: Test the NAT Gateway
+	ping -c 3 amazon.com

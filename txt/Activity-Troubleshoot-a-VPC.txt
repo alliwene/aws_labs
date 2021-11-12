@@ -1,0 +1,134 @@
+1. Create an Amazon Simple Storage Service (Amazon S3) bucket to hold the flow logs, and then you enable VPC Flow Logs on VPC1.2.
+
+2. This task includes two parts:
+	1. Troubleshoot VPC1 network configurations. VPC1 has a public subnet with two instances in it. One of these instances is the Cafe Web Server instance the runs the website. There is a public route table that maps network traffic from the public subnet to the VPC2 internet gateway. That is how the network is supposed to be configured. However, VPC1 has two issues that will require some troubleshooting.
+
+	2. Troubleshoot the issues in VPC1. A CLI Host instance is provided. You will run AWS Command Line Interface (AWS CLI) commands from the CLI Host. The CLI Host must run outside of the virtual private cloud (VPC) that has the issues. Therefore, a second VPC, named VPC2, has been created. The CLI Host runs in VPC2. There are no configuration issues with VPC2. Your CLI Host instance connects to VPC1 resources in the same way that your physical machine connects to VPC1 via the internet. VPC1 and VPC2 are not peered.
+
+3. Troubleshoot the symptoms that you experience after you start the activity. They are depicted with a red X on the diagram. However, keep in mind that symptoms and root cause are different things.
+
+4. Download the flow logs to the CLI Host, and analyze the log entries. Some of the actions you took during troubleshooting will be reflected in the flow logs.
+
+
+
+
+- Discover the region in which the CLI Host instance is running:
+	curl http://169.254.169.254/latest/dynamic/instance-identity/document | grep region
+
+- Create the S3 bucket that will hold the flow logs by using the following command:
+	aws s3api create-bucket --bucket flowlog8678 --region us-west-2 --create-bucket-configuration LocationConstraint=us-west-2 
+
+- Run the following command to get the VPC ID for VPC1, which you must have to enable  VPC Flow Logs:
+	aws ec2 describe-vpcs --query 'Vpcs[*].[VpcId,Tags[?Key==`Name`].Value,CidrBlock]' --filters "Name=tag:Name,Values='VPC1'"
+
+- Enable VPC Flow Logs on VPC1 by running the following command.
+	aws ec2 create-flow-logs --resource-type VPC --resource-ids vpc-0447e8e7a29752f90 --traffic-type ALL --log-destination-type s3 --log-destination arn:aws:s3:::flowlog8678
+
+- Run the following command to confirm the flow log was created:
+	aws ec2 describe-flow-logs
+
+- Run the following command to find details about the web server instance.
+	aws ec2 describe-instances --filter "Name=ip-address,Values='18.237.2.141'"
+
+- Return only the state of the instance, the private IP address, the instance ID, the security groups that are applied to it, the subnet in which it runs, and the key pair name that is associated with it.
+	aws ec2 describe-instances --filter "Name=ip-address,Values='18.237.2.141'" --query 'Reservations[*].Instances[*].[State,PrivateIpAddress,InstanceId,SecurityGroups,SubnetId,KeyName]'
+
+
+## Challenge 1
+
+Hints:
+
+- Check the security group details
+	aws ec2 describe-security-groups --group-ids sg-0838242dfb1c2762b
+
+-  Check the route table settings for the route table that is associated with the subnet where the web server is running
+	aws ec2 describe-route-tables --filter "Name=association.subnet-id,Values='subnet-0599d02f99cdecb9d'"
+
+- Creates a route for the specified route table. The route matches all IPv4 traffic (0.0.0.0/0) and routes it to the specified Internet gateway
+	aws ec2 create-route --route-table-id rtb-0b99f98e0755a4ff6 --destination-cidr-block 0.0.0.0/0 --gateway-id igw-0df2e43db27c4de19
+
+
+## Challenge 2
+
+Hints:
+
+- Check the network access control list (network ACL) settings for the network ACL that is associated with the subnet where the instance is running
+	aws ec2 describe-network-acls --filter "Name=association.subnet-id,Values='subnet-0599d02f99cdecb9d'" --query 'NetworkAcls[*].[NetworkAclId,Entries]'
+
+- Delete any network ACL entries that might be causing an issue
+	aws ec2 delete-network-acl-entry --network-acl-id acl-0162ece7d68c51b5a --ingress --rule-number 40
+
+
+
+Task Cont'd
+
+- Download and extract the flow logs
+	mkdir flowlogs
+	cd flowlogs
+	aws s3 ls 
+	aws s3 cp s3://flowlog8678/ . --recursive
+	Use cd followed by pressing TAB multiple times as need to change the directory and move down into the folder structure that you downloaded. The logs will be located in an AWSLogs/<account-num>/vpcflowlogs/<region>/yyyy/mm/dd subdirectory.
+	extract logs 
+		gunzip *.gz
+
+- Run a grep command the looks in each log file in the current directory, and returns lines that contain the word REJECT:
+	grep -rn REJECT .
+
+- Find out how many records were returned:
+	grep -rn REJECT . | wc -l
+
+- Refine your search by only looking for lines that contain 22 (which is the port number where you attempted to connect to the web server when access was blocked):
+	grep -rn ' 22 ' . | grep REJECT
+
+- Run a more refined query on the flow logs using local IP address 
+	grep -rn ' 22 ' . | grep REJECT | grep 197.210.44.117 .
+
+
+aws ec2 describe-network-interfaces --filters "Name=association.public-ip,Values='18.237.2.141'" --query 'NetworkInterfaces[*].[NetworkInterfaceId,Association.PublicIp]'
+
+- Translate log timestamps to human-readable form.
+	date -d @1636713246
+
+
+
+
+
+
+
+
+
+
+
+"RuleNumber": 40, 
+"Protocol": "6", 
+"PortRange": {
+    "To": 22, 
+    "From": 22
+}, 
+"Egress": false, 
+"RuleAction": "deny", 
+"CidrBlock": "0.0.0.0/0"
+
+
+"Name": "running"
+PrivateIpAddress: "10.0.1.127", 
+InstanceId: "i-03cbe09893d008413", 
+SecurityGroups:{
+                    "GroupName": "c38275a494472l1242920t1w117967518368-WebSecurityGroup-AI5Y64TDXPEK", 
+                    "GroupId": "sg-0838242dfb1c2762b"
+                }
+SubnetId: "subnet-0599d02f99cdecb9d", 
+KeyName: "vockey"
+
+VPC1 ID: vpc-0447e8e7a29752f90
+FlowLogIds: fl-009e54ab24e12903e
+ClientToken: T8qjSFCHAko78cCV46oOA/LUNvSNsjYWOVx7UCcVtQ4=
+WebServerIP: 18.237.2.141
+"RouteTableId": "rtb-0b99f98e0755a4ff6"
+VPC1GatewayId	igw-0df2e43db27c4de19
+VPC1PubSubnetID: subnet-0599d02f99cdecb9d
+NetworkACLID: acl-0162ece7d68c51b5a
+MyIP: 197.210.44.117
+
+
+
