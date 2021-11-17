@@ -1,0 +1,74 @@
+- Discover the region in which the CLI Host instance is running:
+	curl http://169.254.169.254/latest/dynamic/instance-identity/document | grep region
+
+- Create bucket 
+	aws s3 mb s3://cafe-aua234 --region us-west-2
+
+- Load some images in the S3 bucket under the /images prefix. Sample image files are provided in the initial-images folder on the CLI Host. 
+	aws s3 sync ~/initial-images/ s3://cafe-aua234/images
+
+- SNS topic access policy 
+	{
+  "Version": "2008-10-17",
+  "Id": "S3PublishPolicy",
+  "Statement": [
+    {
+      "Sid": "AllowPublishFromS3",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "s3.amazonaws.com"
+      },
+      "Action": "SNS:Publish",
+      "Resource": "arn:aws:sns:us-west-2:034934632855:s3NotificationTopic",
+      "Condition": {
+        "ArnLike": {
+          "aws:SourceArn": "arn:aws:s3:*:*:cafe-aua234"
+	        }
+	      }
+	    }
+	  ]
+	}
+
+- Create event notification json that identifies the events that Amazon S3 will publish and the topic destination where Amazon S3 will send the event notifications
+	nano s3EventNotification.json
+
+	{
+  "TopicConfigurations": [
+    {
+      "TopicArn": "arn:aws:sns:us-west-2:034934632855:s3NotificationTopic",
+      "Events": ["s3:ObjectCreated:*","s3:ObjectRemoved:*"],
+      "Filter": {
+        "Key": {
+          "FilterRules": [
+            {
+              "Name": "prefix",
+              "Value": "images/"
+            }
+	          ]
+	        }
+	      }
+	    }
+	  ]
+	}
+
+
+- Associate the event configuration file with the S3 share bucket. 
+	aws s3api put-bucket-notification-configuration --bucket cafe-aua234 --notification-configuration file://s3EventNotification.json
+
+- Upload object into bucket. (Use mediacouser credentials)
+	aws s3api put-object --bucket cafe-aua234 --key images/Caramel-Delight.jpg --body ~/new-images/Caramel-Delight.jpg
+
+- Get object 
+	aws s3api get-object --bucket cafe-aua234 --key images/Donuts.jpg Donuts.jpg
+
+- Delete object 
+	aws s3api delete-object --bucket cafe-aua234 --key images/Strawberry-Tarts.jpg
+
+- Change permission of object (mediacouser does not have required permission for this)
+	aws s3api put-object-acl --bucket cafe-aua234 --key images/Donuts.jpg --acl public-read
+
+	
+
+cafe-aua234
+034934632855
+topic arn: arn:aws:sns:us-west-2:034934632855:s3NotificationTopic
