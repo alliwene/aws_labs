@@ -1,0 +1,22 @@
+aws s3 mb s3://ualblabs --region us-west-2
+
+scp -i labsuser.pem /home/alli/Pictures/use.jpg ec2-user@52.13.7.33:/home/ec2-user/ 
+
+aws s3api put-object --bucket ualblabs --key class-mates.jpg --body ~/use.jpg --acl public-read
+
+aws s3 ls s3://ualblabs
+
+https://ualblabs.s3.us-west-2.amazonaws.com/class-mates.jpg 
+
+aws s3api put-object-acl --bucket DOC-EXAMPLE-BUCKET --key exampleobject --acl public-read
+
+
+
+
+
+
+
+
+
+
+

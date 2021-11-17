@@ -1,0 +1,1 @@
+* * * * *  aws ec2 create-snapshot --volume-id vol-0bd292894b79fc8a8 2>&1 >> /tmp/cronlog

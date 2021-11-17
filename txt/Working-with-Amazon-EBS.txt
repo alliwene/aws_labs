@@ -1,0 +1,14 @@
+- Run the following command to verify that there is no file system attached to the device:
+	sudo lsblk -f
+
+- Run the following command to create an ext3 file system on the new volume:
+	sudo mkfs -t ext3 /dev/sdf
+
+- Run the following command to create a directory for mounting the new storage volume:
+	sudo mkdir /mnt/data-store
+
+- Run the following command to mount the new volume:
+	sudo mount /dev/sdf /mnt/data-store
+
+- To configure the Linux instance to mount this volume whenever the instance is started, you need to add a line to /etc/fstab. Run the following command:
+	echo "/dev/sdf   /mnt/data-store ext3 defaults,noatime 1 2" | sudo tee -a /etc/fstab 
