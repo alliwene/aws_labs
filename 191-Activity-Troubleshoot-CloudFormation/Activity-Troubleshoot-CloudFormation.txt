@@ -1,0 +1,221 @@
+	
+- Filters with JMESPath
+	desserts[?name=='Carrot cake']
+	StackResources[?ResourceType == 'AWS::EC2::Instance'].LogicalResourceId
+
+- Discover region in which the CLI Host instance is running
+	curl http://169.254.169.254/latest/dynamic/instance-identity/document | grep region
+
+- Create a stack:
+	aws cloudformation create-stack \
+	--stack-name myStack \
+	--template-body file://template1.yaml \
+	--capabilities CAPABILITY_NAMED_IAM \
+	--parameters ParameterKey=KeyName,ParameterValue=vockey
+
+- Check the status of each resource that is created by this stack:
+	watch -n 5 -d \
+	aws cloudformation describe-stack-resources \
+	--stack-name myStack \
+	--query 'StackResources[*].[ResourceType,ResourceStatus]' \
+	--output table
+
+- To see the stack status and other details
+	watch -n 5 -d \
+	aws cloudformation describe-stacks \
+	--stack-name myStack \
+	--output table
+
+- Analyze the issue by running the describe-stack-events command with a query that returns only the CREATE_FAILED events:
+	aws cloudformation describe-stack-events \
+	--stack-name myStack \
+	--query "StackEvents[?ResourceStatus == 'CREATE_FAILED']"
+
+- Delete the stack:
+	aws cloudformation delete-stack --stack-name myStack
+
+## Avoid rollback on an AWS CloudFormation stack
+-  run the create-stack command again. Give the stack the same name, but this time, specify that there should be no rollback on failure:
+	aws cloudformation create-stack \
+	--stack-name myStack \
+	--template-body file://template1.yaml \
+	--capabilities CAPABILITY_NAMED_IAM \
+	--on-failure DO_NOTHING \
+	--parameters ParameterKey=KeyName,ParameterValue=vockey
+
+- Run the describe-stack-resources command again.
+	watch -n 5 -d \
+	aws cloudformation describe-stack-resources \
+	--stack-name myStack \
+	--query 'StackResources[*].[ResourceType,ResourceStatus]' \
+	--output table
+
+- run describe-stacks again 
+	aws cloudformation describe-stacks \
+	--stack-name myStack \
+	--output table
+
+- Analyze the latest details of the CREATE_FAILED event and verify that it is the same issue as before.
+	aws cloudformation describe-stack-events \
+	--stack-name myStack \
+	--query "StackEvents[?ResourceStatus == 'CREATE_FAILED']"
+
+- Get public address of created web server ec2 so as to ssh into it 
+	aws ec2 describe-instances \
+	--filters "Name=tag:Name,Values='Web Server'" \
+	--query 'Reservations[].Instances[].[State.Name,PublicIpAddress]'
+
+- In the web-server SSH terminal window, run the following command to view the last 50 lines of the cloud-init log output:
+	tail -50 /var/log/cloud-init-output.log
+
+- Run the following command to view the part-001 script:
+	sudo cat /var/lib/cloud/instance/scripts/part-001
+
+	In particular, notice the first line, which starts with the #! characters. This 
+	line includes the -e parameter. This parameter signals that if any command in the 
+	script fails, the whole script should immediately stop running with a non-zero 
+	status.
+
+- Replace http with httpd in line 128 of template1.yaml
+
+- Confirm that the file was updated by running this command:
+	cat template1.yaml | grep httpd
+
+- Delete the failed stack:
+	aws cloudformation delete-stack --stack-name myStack
+
+- Run the describe-stacks command again
+	watch -n 5 -d \
+	aws cloudformation describe-stacks \
+	--stack-name myStack \
+	--output table
+
+- run the create-stack command again:
+	aws cloudformation create-stack \
+	--stack-name myStack \
+	--template-body file://template1.yaml \
+	--capabilities CAPABILITY_NAMED_IAM \
+	--on-failure DO_NOTHING \
+	--parameters ParameterKey=KeyName,ParameterValue=vockey
+
+- Run the describe-stack-resources command again and wait until all resources are created:
+	watch -n 5 -d \
+	aws cloudformation describe-stack-resources \
+	--stack-name myStack \
+	--query 'StackResources[*].[ResourceType,ResourceStatus]' \
+	--output table
+
+- Run the describe-stacks command.
+	aws cloudformation describe-stacks \
+	--stack-name myStack \
+	--output table
+
+
+# Task 3: Make manual modifications and detect drift
+- Modify existing SSH inbound rule in Web server
+
+- query the bucket name, assign it to a variable named bucketName, and echo result to the terminal by running the following command:
+	bucketName=$(\
+	aws cloudformation describe-stacks \
+	--stack-name myStack \
+	--query "Stacks[*].Outputs[?OutputKey \
+	== 'BucketName'].[OutputValue]" \
+	--output text)
+	echo "bucketName = "$bucketName
+
+- Create an empty file and copy file to bucket 
+	touch myfile
+	aws s3 cp myfile s3://$bucketName/
+
+# 3.3: Detect drift 
+- start drift detection on your stack
+	aws cloudformation detect-stack-drift --stack-name myStack
+
+- Monitor the status of the drift detection 
+	aws cloudformation describe-stack-drift-detection-status \
+	--stack-drift-detection-id 0a6942d0-4ca8-11ec-b103-0a0e7ec6ed53
+
+- Finally, describe the resources that drifted 
+	aws cloudformation describe-stack-resource-drifts \
+	--stack-name myStack
+
+	output is extensive
+
+- Run a describe-stack-resources command with a query parameter that will return only the resource type, resource status, and drift status.
+	aws cloudformation describe-stack-resources \
+	--stack-name myStack \
+	--query 'StackResources[*].[ResourceType,ResourceStatus,DriftInformation.StackResourceDriftStatus]' \
+	--output table
+
+	only adding files to a bucket does not register as drift in AWS CloudFormation
+
+- Retrieve the specific details of the drift for the resource that has a StackResourceDriftStatus of MODIFIED:
+	aws cloudformation describe-stack-resource-drifts \
+	--stack-name myStack \
+	--stack-resource-drift-status-filters MODIFIED
+
+- Try updating the stack:
+	aws cloudformation update-stack \
+	--stack-name myStack \
+	--template-body file://template1.yaml \
+	--parameters ParameterKey=KeyName,ParameterValue=vockey
+
+	The update-stack command will not automatically resolve drift, though drift has 
+	occurred. You must manually resolve these issues to eliminate the drift.
+
+
+## Task 4: Attempt to delete the stack
+- Try deleting the stack by running the following command:
+	aws cloudformation delete-stack --stack-name myStack
+
+- Observe the results by running the describe-stack-resources command:
+	watch -n 5 -d \
+	aws cloudformation describe-stack-resources \
+	--stack-name myStack \
+	--query 'StackResources[*].[ResourceType,ResourceStatus]' \
+	--output table
+
+	Notice that most of the resources are successfully deleted. However, there is one 
+	resource that fails to delete. It is the S3 bucket.
+
+- Run the describe-stacks command to see the stack status:
+	aws cloudformation describe-stacks \
+	--stack-name myStack \
+	--output table
+
+# Challenge
+- Get logical id for S3 bucket 
+	aws cloudformation list-stack-resources \
+    --stack-name myStack \
+    --query "StackResourceSummaries[?ResourceType == 'AWS::S3::Bucket'].LogicalResourceId"
+
+- Retain S3 bucket when deleting the stack 
+	aws cloudformation delete-stack --stack-name myStack \
+	--retain-resources "MyBucket"
+
+
+
+
+
+
+
+
+"StackDriftDetectionId": "0a6942d0-4ca8-11ec-b103-0a0e7ec6ed53"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

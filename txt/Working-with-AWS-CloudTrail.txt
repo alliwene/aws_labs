@@ -1,0 +1,162 @@
+monitoring2345
+aua-KMS
+
+35.155.158.209
+
+
+## 3.3: Download and extract CloudTrail logs
+- Create a local directory on the web server to download the CloudTrail log files to
+	mkdir ctraillogs
+
+- Change the directory to the new directory
+	cd ctraillogs
+
+- List the buckets to recall the bucket name
+	aws s3 ls
+
+- Download the CloudTrail logs
+	aws s3 cp s3://monitoring2345/ . --recursive
+
+- Change the directory to the subdirectory where the logs were downloaded
+	cd AWSLogs/015331398974/CloudTrail/us-west-2/2021/11/18/
+
+- Extract the logs:
+	gunzip *.gz
+
+
+## 3.4: Analyze the logs using grep
+- Analyze structure of the logs 
+	cat 015331398974_CloudTrail_us-west-2_20211118T0845Z_pouNsvIjfNcXtFD1.json | python -m json.tool
+
+- Set the WebServerIP address as a variable that you can use in future commands 
+	ip=35.155.158.209
+
+- Filter log results to get the sourceIPAddress tag
+	for i in $(ls); do echo $i && cat $i | python -m json.tool | grep sourceIPAddress ; done
+
+- Filter log results to get the eventName tag
+	for i in $(ls); do echo $i && cat $i | python -m json.tool | grep eventName ; done
+
+
+## 3.5: Analyze the logs using AWS CLI CloudTrail commands
+- Check for users that logged into the console
+	aws cloudtrail lookup-events --lookup-attributes AttributeKey=EventName,AttributeValue=ConsoleLogin
+
+- Find any actions that were taken on security groups in the AWS account
+	aws cloudtrail lookup-events --lookup-attributes AttributeKey=ResourceType,AttributeValue=AWS::EC2::SecurityGroup --output text
+
+- Narrow the search results further so that you get only the results related to the security group that is used by the web server instance
+	region=$(curl http://169.254.169.254/latest/dynamic/instance-identity/document|grep region | cut -d '"' -f4)
+
+	sgId=$(aws ec2 describe-instances --filters "Name=tag:Name,Values='Cafe Web Server'" --query 'Reservations[*].Instances[*].SecurityGroups[*].[GroupId]' --region $region --output text)
+
+	echo $sgId
+
+	aws cloudtrail lookup-events --lookup-attributes AttributeKey=ResourceType,AttributeValue=AWS::EC2::SecurityGroup --region $region --output text | grep $sgId
+
+
+## 4: Analyzing the CloudTrail logs using Athena
+- Command to create Athena table 
+	CREATE EXTERNAL TABLE cloudtrail_logs_monitoring2345 (
+    eventVersion STRING,
+    userIdentity STRUCT<
+        type: STRING,
+        principalId: STRING,
+        arn: STRING,
+        accountId: STRING,
+        invokedBy: STRING,
+        accessKeyId: STRING,
+        userName: STRING,
+        sessionContext: STRUCT<
+            attributes: STRUCT<
+                mfaAuthenticated: STRING,
+                creationDate: STRING>,
+            sessionIssuer: STRUCT<
+                type: STRING,
+                principalId: STRING,
+                arn: STRING,
+                accountId: STRING,
+                userName: STRING>>>,
+    eventTime STRING,
+    eventSource STRING,
+    eventName STRING,
+    awsRegion STRING,
+    sourceIpAddress STRING,
+    userAgent STRING,
+    errorCode STRING,
+    errorMessage STRING,
+    requestParameters STRING,
+    responseElements STRING,
+    additionalEventData STRING,
+    requestId STRING,
+    eventId STRING,
+    resources ARRAY<STRUCT<
+        arn: STRING,
+        accountId: STRING,
+        type: STRING>>,
+    eventType STRING,
+    apiVersion STRING,
+    readOnly STRING,
+    recipientAccountId STRING,
+    serviceEventDetails STRING,
+    sharedEventID STRING,
+    vpcEndpointId STRING
+	)
+	COMMENT 'CloudTrail table for monitoring2345 bucket'
+	ROW FORMAT SERDE 'com.amazon.emr.hive.serde.CloudTrailSerde'
+	STORED AS INPUTFORMAT 'com.amazon.emr.cloudtrail.CloudTrailInputFormat'
+	OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+	LOCATION 's3://monitoring2345/AWSLogs/015331398974/CloudTrail/'
+	TBLPROPERTIES ('classification'='cloudtrail');
+
+- View first 5 rows from table 
+	SELECT *
+	FROM cloudtrail_logs_monitoring2345
+	LIMIT 5 
+
+- Focus on the columns useridentity, eventtime, eventsource, eventname, and requestparameters, which contain the most valuable information to help you find the origin of the hack
+
+- Select username for useridentity column and other columns listed above
+	SELECT useridentity.userName, eventtime, eventsource, eventname, requestparameters
+	FROM cloudtrail_logs_monitoring2345
+	LIMIT 30
+
+
+Challenge: Identify the hacker 
+	SELECT useridentity.userName, from_iso8601_timestamp(eventtime) AS eventTime, eventsource, eventname, requestparameters,
+    	sourceipaddress, useragent 
+	FROM cloudtrail_logs_monitoring2345
+	WHERE eventsource = 'ec2.amazonaws.com' AND eventname LIKE 'AuthorizeSecurityGroupIngress'; 
+
+
+## 5: Analyzing the hack further and improving security 
+- Find out who has recently logged into the OS
+	sudo aureport --auth
+
+- Figure out who is currently logged in:
+	who
+
+- Try to remove the chaos-user OS user:
+	sudo userdel -r chaos-user
+	sudo kill -9 3786
+	sudo userdel -r chaos-user
+
+- Verify no other suspicious OS users who can login:
+	sudo cat /etc/passwd | grep -v nologin
+
+- Check the SSH settings on this instance.
+	sudo ls -l /etc/ssh/sshd_config
+
+- edit the SSH configuration file:
+	sudo nano /etc/ssh/sshd_config
+
+	Notice on line 61 that password authentication is enabled. That is definitely not a security best practice! That means that anyone who knows (or can correctly guess) the username and password combination of an OS user can remotely access this instance without using an SSH key pair. Comment out PasswordAuthentication yes line. 
+
+- Restart the SSH service so that the changes go into effect
+	sudo service sshd restart
+
+- Fix the website 
+	cd /var/www/html/cafe/images/
+	ls -l
+	sudo mv Coffee-and-Pastries.backup Coffee-and-Pastries.jpg
+
