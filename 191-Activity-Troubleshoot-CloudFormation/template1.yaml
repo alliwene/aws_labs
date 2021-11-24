@@ -17,10 +17,10 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
 
-  KeyName:
-    Type: String
-    Description: Keyname for the keypair that you will use to connect to the Web Server EC2 instance
-    Default: default-lab-key
+  # KeyName:
+  #   Type: String
+  #   Description: Keyname for the keypair that you will use to connect to the Web Server EC2 instance
+  #   Default: default-lab-key
 
 Resources:
 
@@ -71,7 +71,7 @@ Resources:
     Type: AWS::EC2::Route
     DependsOn:
       - PublicRouteTable
-      - IGW
+      - IGW 
     Properties:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref IGW
@@ -92,7 +92,7 @@ Resources:
         - 0
         - !GetAZs
           Ref: AWS::Region
-      Tags:
+      Tags: 
         - Key: Name
           Value: Public Subnet
 
@@ -112,8 +112,8 @@ Resources:
   WebServerInstance:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: !Ref AmazonLinuxAMIID
-      KeyName: !Ref KeyName
+      ImageId: !Ref AmazonLinuxAMIID 
+      # KeyName: !Ref KeyName
       InstanceType: t2.micro
       SecurityGroupIds:
         - !Ref WebSecurityGroup
