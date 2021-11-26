@@ -1,0 +1,29 @@
+- Make bucket 
+	aws s3 mb s3://<bucket-name>
+
+- Upload the CloudFormationChallenge.yml file into the bucket 
+	using AWS console
+
+- Make the uploaded object public 
+	aws s3api put-object-acl --bucket <bucket-name> --key CloudFormationChallenge.yml --acl public-read
+
+- Copy the object url and replace in the challenge-script.py script
+
+- Upload  challenge-script.py script into the same bucket 
+	using AWS console
+
+- Make the py script public 
+	aws s3api put-object-acl --bucket <bucket-name> --key challenge-script.py --acl public-read
+
+- Copy challenge-script.py url and download in the terminal 
+	wget "url"
+
+- confirm file is available 
+	ls
+
+- run the script
+	python3 challenge-script.py
+
+- go to cloudformation in AWS console to confirm lab192Stack has been created 
+
+- confirm ec2, vpc has been created from AWS console 

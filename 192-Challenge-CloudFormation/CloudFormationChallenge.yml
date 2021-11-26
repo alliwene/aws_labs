@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Lab template
 
-# Lab VPC with public subnet and Internet Gateway
+# Lab VPC with public subnet, private subnet and Internet Gateway
 
 Parameters:
 
@@ -12,15 +12,14 @@ Parameters:
   PublicSubnetCidr:
     Type: String
     Default: 10.0.0.0/24
-
+    
+  PrivateSubnetCidr:
+    Type: String
+    Default: 10.0.1.0/24
+    
   AmazonLinuxAMIID:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
-
-  # KeyName:
-  #   Type: String
-  #   Description: Keyname for the keypair that you will use to connect to the Web Server EC2 instance
-  #   Default: default-lab-key
 
 Resources:
 
@@ -28,7 +27,7 @@ Resources:
 # VPC with Internet Gateway
 ###########
 
-  LabVPC:
+  LabVPC1:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: !Ref LabVpcCidr
@@ -49,10 +48,10 @@ Resources:
     Type: AWS::EC2::VPCGatewayAttachment
     DependsOn:
       - IGW
-      - LabVPC
+      - LabVPC1
     Properties:
       InternetGatewayId: !Ref IGW
-      VpcId: !Ref LabVPC
+      VpcId: !Ref LabVPC1
 
 ###########
 # Public Route Table
@@ -60,9 +59,9 @@ Resources:
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
-    DependsOn: LabVPC
+    DependsOn: LabVPC1
     Properties:
-      VpcId: !Ref LabVPC
+      VpcId: !Ref LabVPC1
       Tags:
         - Key: Name
           Value: Public Route Table
@@ -71,10 +70,10 @@ Resources:
     Type: AWS::EC2::Route
     DependsOn:
       - PublicRouteTable
-      - IGW 
+      - IGW
     Properties:
       DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref IGW 
+      GatewayId: !Ref IGW
       RouteTableId: !Ref PublicRouteTable
 
 ###########
@@ -83,16 +82,16 @@ Resources:
 
   PublicSubnet:
     Type: AWS::EC2::Subnet
-    DependsOn: LabVPC
+    DependsOn: LabVPC1
     Properties:
-      VpcId: !Ref LabVPC
+      VpcId: !Ref LabVPC1
       MapPublicIpOnLaunch: true
       CidrBlock: !Ref PublicSubnetCidr
-      AvailabilityZone: !Select
+      AvailabilityZone: !Select 
         - 0
-        - !GetAZs
+        - !GetAZs 
           Ref: AWS::Region
-      Tags: 
+      Tags:
         - Key: Name
           Value: Public Subnet
 
@@ -104,73 +103,87 @@ Resources:
     Properties:
       RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref PublicSubnet
+  
+###########
+# Private Route Table
+###########
+
+  # PrivateRouteTable:
+  #   Type: AWS::EC2::RouteTable
+  #   DependsOn: LabVPC1
+  #   Properties:
+  #     VpcId: !Ref LabVPC1
+  #     Tags:
+  #       - Key: Name
+  #         Value: Private Route Table
+
+  # PrivateRoute:
+  #   Type: AWS::EC2::Route 
+  #   DependsOn:
+  #     - PrivateRouteTable
+  #   Properties:
+  #     DestinationCidrBlock: 10.0.0.0/20
+  #     RouteTableId: !Ref PrivateRouteTable
 
 ###########
-# EC2 Instance
+# Private Subnet
 ###########
 
-  WebServerInstance:
-    Type: AWS::EC2::Instance
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    DependsOn: LabVPC1
     Properties:
-      ImageId: !Ref AmazonLinuxAMIID 
-      # KeyName: !Ref KeyName
-      InstanceType: t2.micro
-      SecurityGroupIds:
-        - !Ref WebSecurityGroup
-      SubnetId: !Ref PublicSubnet
+      VpcId: !Ref LabVPC1
+      MapPublicIpOnLaunch: false
+      CidrBlock: !Ref PrivateSubnetCidr
+      AvailabilityZone: !Select 
+        - 0
+        - !GetAZs 
+          Ref: AWS::Region
       Tags:
         - Key: Name
-          Value: Web Server
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash -ex
-          hostnamectl set-hostname Web-Server
-          yum install -y httpd
-          echo '<html><h1>Hello from your web server!</h1></html>' > /var/www/html/index.html
-          systemctl enable httpd
-          systemctl start httpd
-          /opt/aws/bin/cfn-signal -s true '${WaitHandle}'
+          Value: Private Subnet
 
-  WaitHandle:
-    Type: AWS::CloudFormation::WaitConditionHandle
-
-  WaitCondition:
-    Type: AWS::CloudFormation::WaitCondition
-    DependsOn: WebServerInstance
-    Properties:
-      Handle: !Ref WaitHandle
-      Timeout: '60'
+  # PrivateRouteTableAssociation:
+  #   Type: AWS::EC2::SubnetRouteTableAssociation
+  #   DependsOn:
+  #     - PrivateRouteTable
+  #     - PrivateSubnet
+  #   Properties:
+  #     RouteTableId: !Ref PrivateRouteTable
+  #     SubnetId: !Ref PrivateSubnet
 
 ###########
-# Web Security Group
+# App Security Group
 ###########
 
-  WebSecurityGroup:
+  AppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
-    DependsOn: LabVPC
+    DependsOn: LabVPC1
     Properties:
-      GroupName: WebServerSG
-      GroupDescription: Enable access to web server
-      VpcId: !Ref LabVPC
+      GroupName: App
+      GroupDescription: Enable access to App
+      VpcId: !Ref LabVPC1
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: '80'
-          ToPort: '80'
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: '22'
-          ToPort: '22'
+          FromPort: 22
+          ToPort: 22
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
-          Value: WebServerSG
+          Value: App
 
-###########
-# S3
-###########
-
-  MyBucket:
-    Type: AWS::S3::Bucket
+  Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: !Ref AmazonLinuxAMIID
+      SubnetId: !Ref PrivateSubnet
+      SecurityGroupIds:
+        - !Ref AppSecurityGroup
+      Tags:
+        - Key: Name
+          Value: App Server
 
 ###########
 # Outputs
@@ -178,10 +191,5 @@ Resources:
 
 Outputs:
 
-  BucketName:
-    Value: !Sub ${MyBucket}
-
-  PublicIP:
-    Value: !GetAtt
-      - WebServerInstance
-      - PublicIp
+  LabVPCDefaultSecurityGroup:
+    Value: !Sub ${LabVPC1.DefaultSecurityGroup}

@@ -40,7 +40,7 @@
 	--stack-name myStack \
 	--template-body file://template1.yaml \
 	--capabilities CAPABILITY_NAMED_IAM \
-	--on-failure DO_NOTHING \
+	--on-failure DO_NOTHING \ 
 	--parameters ParameterKey=KeyName,ParameterValue=vockey
 
 - Run the describe-stack-resources command again.
@@ -191,7 +191,7 @@
 
 - Retain S3 bucket when deleting the stack 
 	aws cloudformation delete-stack --stack-name myStack \
-	--retain-resources "MyBucket"
+	--retain-resources "MyBucket" 
 
 
 
