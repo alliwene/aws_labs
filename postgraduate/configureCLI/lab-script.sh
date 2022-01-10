@@ -21,3 +21,7 @@ echo "$PolicyDoc" > lab_policy.json
 
 echo "Lab Policy Document: "
 echo "$(cat lab_policy.json)" 
+
+
+# sed -e 's/"//g'
+
