@@ -1,5 +1,5 @@
 ## AWS Lab resources 
 
-[re/Start](./reStart)
-[re/Start Postgraduate](./postgraduate)
-[Coursera AWS Cloud Technical Essentials](./Technical-Essentials)
+- re/Start [resources](./reStart)
+- re/Start Postgraduate [resources](./postgraduate)
+- Coursera AWS Cloud Technical Essentials [resources](./Technical-Essentials)
