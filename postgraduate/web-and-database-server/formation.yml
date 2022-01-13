@@ -72,8 +72,7 @@ Resources:
       CidrBlock: 10.0.0.0/24
       AvailabilityZone: !Select 
         - 0
-        - !GetAZs 
-          Ref: AWS::Region
+        - Fn::GetAZs: !Ref 'AWS::Region'
       Tags:
         - Key: Name
           Value: Public Subnet
@@ -136,8 +135,7 @@ Resources:
       CidrBlock: 10.0.1.0/24
       AvailabilityZone: !Select 
         - 1
-        - !GetAZs 
-          Ref: AWS::Region 
+        - Fn::GetAZs: !Ref 'AWS::Region'
       Tags:
         - Key: Name
           Value: Private Subnet 1
@@ -151,8 +149,7 @@ Resources:
       CidrBlock: 10.0.2.0/24
       AvailabilityZone: !Select 
         - 2
-        - !GetAZs 
-          Ref: AWS::Region 
+        - Fn::GetAZs: !Ref 'AWS::Region' 
       Tags:
         - Key: Name
           Value: Private Subnet 2 
