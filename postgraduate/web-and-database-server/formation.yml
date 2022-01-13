@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Lab template
+Description: Set up web server and rds instance 
 
 # Lab VPC with public subnet, private subnet and Internet Gateway
 
