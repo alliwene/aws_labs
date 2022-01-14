@@ -5,7 +5,7 @@
 	aws cloudformation create-stack \
 	--stack-name db-stack \
 	--template-body file://formation.yml \
-	--disable-rollback --profile sandbox
+	--disable-rollback 
 
 	--on-failure DO_NOTHING 
 
@@ -14,19 +14,25 @@
 	aws cloudformation describe-stack-resources \
 	--stack-name db-stack \
 	--query 'StackResources[*].[ResourceType,ResourceStatus]' \
-	--output table --profile sandbox
+	--output table 
 
 - Check resources that failed to create
 	aws cloudformation describe-stack-events \
 	--stack-name db-stack \
-	--query "StackEvents[?ResourceStatus == 'CREATE_FAILED']" --profile sandbox
+	--query "StackEvents[?ResourceStatus == 'CREATE_FAILED']" 
 
 - Update stack
-	aws cloudformation update-stack --stack-name db-stack --template-body file://formation.yml --disable-rollback --profile sandbox
+	aws cloudformation update-stack \
+	--stack-name db-stack \
+	--template-body file://formation.yml \
+	--disable-rollback 
 
 - Delete stack 
-	aws cloudformation delete-stack --stack-name db-stack --profile sandbox
+	aws cloudformation delete-stack \
+	--stack-name db-stack 
 
 - Get rds endpoint 
-	aws rds describe-db-instances --db-instance-identifier tutorial-db-instance --query 'DBInstances[0].Endpoint.Address' --profile sandbox
+	aws rds describe-db-instances \
+	--db-instance-identifier tutorial-db-instance \
+	--query 'DBInstances[0].Endpoint.Address' 
 

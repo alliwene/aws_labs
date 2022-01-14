@@ -83,3 +83,107 @@ Resources:
       Tags:
         - Key: Name
           Value: Private Subnet 2
+
+# Public route table, route and route table association
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+      Tags:
+        - Key: Name
+          Value: app-routetable-public
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref igwApp 
+
+  PublicRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+# Private route table and route table association
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+      Tags:
+        - Key: Name
+          Value: app-routetable-private
+
+  PrivateRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+# Security group and EC2 in public subnet 
+  appSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: allow http access
+      VpcId: !Ref myVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: web-security-group 
+    
+  iamInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - EC2S3DynamoDB 
+    
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName: ukey
+      ImageId: !Ref AmazonLinuxAMIID
+      InstanceType: t2.micro
+      SubnetId: !Ref PublicSubnet1
+      SecurityGroupIds: 
+        - !Ref appSecurityGroup
+      IamInstanceProfile: !Ref iamInstanceProfile 
+      UserData: !Base64 | 
+        #!/bin/bash -ex
+        wget https://aws-tc-largeobjects.s3-us-west-2.amazonaws.com/DEV-AWS-MO-GCNv2/FlaskApp.zip
+        unzip FlaskApp.zip
+        cd FlaskApp/
+        yum -y install python3 mysql
+        pip3 install -r requirements.txt
+        amazon-linux-extras install epel
+        yum -y install stress
+        export PHOTOS_BUCKET=${SUB_PHOTOS_BUCKET}
+        export AWS_DEFAULT_REGION=us-west-2
+        export DYNAMO_MODE=on
+        FLASK_APP=application.py /usr/local/bin/flask run --host=0.0.0.0 --port=80
+      Tags:
+        - Key: Name
+          Value: employee-directory-app

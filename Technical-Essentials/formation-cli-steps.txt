@@ -1,0 +1,27 @@
+- Create key pair 
+	aws ec2 create-key-pair --key-name ukey --query 'KeyMaterial' --output text > mykey.pem
+
+- Create stack
+	aws cloudformation create-stack \
+	--stack-name app-stack \
+	--template-body file://lab-4-formation.yml \
+    --capabilities CAPABILITY_IAM 
+	--disable-rollback 
+
+- Track create progress 
+	watch -n 5 -d \
+	aws cloudformation describe-stack-resources \
+	--stack-name app-stack \
+	--query 'StackResources[*].[ResourceType,ResourceStatus]' \
+	--output table 
+
+- Update stack
+	aws cloudformation update-stack \
+	--stack-name app-stack \
+	--template-body file://lab-4-formation.yml \
+    --capabilities CAPABILITY_IAM \
+	--disable-rollback 
+
+- Delete stack 
+	aws cloudformation delete-stack \
+	--stack-name app-stack 
