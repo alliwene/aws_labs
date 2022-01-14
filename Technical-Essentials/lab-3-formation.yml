@@ -25,7 +25,7 @@ Resources:
     Properties:
       Path: /
       Roles:
-        - EC2S3DynamoDB 
+        - S3DynamoDBFullAccessRole 
     
 
   EC2Instance:
