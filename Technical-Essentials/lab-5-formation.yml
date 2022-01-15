@@ -153,7 +153,7 @@ Resources:
             Sid: AllowS3ReadAccess
             Effect: Allow
             Principal:
-              AWS: arn:aws:iam::822248934593:role/S3DynamoDBFullAccessRole
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:role/S3DynamoDBFullAccessRole
             Action: s3:*
             Resource:
               - !Sub arn:aws:s3:::${s3Bucket}
@@ -212,4 +212,4 @@ Resources:
           FLASK_APP=application.py /usr/local/bin/flask run --host=0.0.0.0 --port=80
       Tags:
         - Key: Name
-          Value: employee-directory-app
+          Value: employee-directory-app 
