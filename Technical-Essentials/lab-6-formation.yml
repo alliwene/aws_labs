@@ -163,19 +163,19 @@ Resources:
   appSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: allow http access
+      GroupDescription: allow http and https access
       VpcId: !Ref myVPC
       SecurityGroupIngress:
-        - Description: Allow http access
+        - Description: allow http access
           IpProtocol: tcp
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
-        - Description: Allow https access
+        - Description: allow https access 
           IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          CidrIp: 0.0.0.0/0
+          CidrIp: 0.0.0.0/0 
       SecurityGroupEgress:
         - Description: Allow all outbound traffic
           IpProtocol: "-1"
@@ -219,3 +219,24 @@ Resources:
       Tags:
         - Key: Name
           Value: employee-directory-app 
+
+# DynamoDB
+  dynamodbTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - 
+          AttributeName: id 
+          AttributeType: S 
+      KeySchema:
+        - 
+          AttributeName: id 
+          KeyType: HASH
+      BillingMode: PROVISIONED
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5 
+      TableName: Employees
+      Tags:
+        - Key: Name
+          Value: app-dynamo-db 

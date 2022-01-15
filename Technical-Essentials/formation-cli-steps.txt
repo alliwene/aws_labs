@@ -18,7 +18,7 @@
 - Update stack
 	aws cloudformation update-stack \
 	--stack-name app-stack \
-	--template-body file://lab-4-formation.yml \
+	--template-body file://lab-6-formation.yml \
     --capabilities CAPABILITY_IAM \
 	--disable-rollback 
 

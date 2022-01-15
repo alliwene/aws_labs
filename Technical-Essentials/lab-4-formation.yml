@@ -141,14 +141,20 @@ Resources:
       GroupDescription: allow http access
       VpcId: !Ref myVPC
       SecurityGroupIngress:
-        - IpProtocol: tcp
+        - Description: Allow http access
+          IpProtocol: tcp
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
+        - Description: Allow https access
+          IpProtocol: tcp
           FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - Description: Allow all outbound traffic
+          IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0 
       Tags:
         - Key: Name
           Value: web-security-group 
