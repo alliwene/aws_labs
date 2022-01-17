@@ -1,5 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: add S3 bucket to lab 4 infrastructure 
+Description: VPC with 2 public subnets and 2 private subnets, EC2 in public subnet to host employee directory app. 
+            Add S3 bucket and Dynamo DB table to store employee data. Add application load balancer and auto scaling groups.
 
 Parameters: 
   AmazonLinuxAMIID:
@@ -170,7 +171,7 @@ Resources:
           IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: 0.0.0.0/0
+          SourceSecurityGroupId: !Ref ELBSecurityGroup
         - Description: allow https access 
           IpProtocol: tcp
           FromPort: 443
@@ -195,10 +196,10 @@ Resources:
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
-      KeyName: ukey
+      KeyName: app-key-pair
       ImageId: !Ref AmazonLinuxAMIID
       InstanceType: t2.micro
-      SubnetId: !Ref PublicSubnet1
+      SubnetId: !Ref PublicSubnet1 
       SecurityGroupIds: 
         - !Ref appSecurityGroup
       IamInstanceProfile: !Ref iamInstanceProfile 
@@ -212,7 +213,7 @@ Resources:
           pip3 install -r requirements.txt
           amazon-linux-extras install epel
           yum -y install stress
-          export PHOTOS_BUCKET=s3Bucket
+          export PHOTOS_BUCKET=${s3Bucket}
           export AWS_DEFAULT_REGION=${AWS::Region}
           export DYNAMO_MODE=on
           FLASK_APP=application.py /usr/local/bin/flask run --host=0.0.0.0 --port=80
@@ -232,7 +233,7 @@ Resources:
         - 
           AttributeName: id 
           KeyType: HASH
-      BillingMode: PROVISIONED
+      BillingMode: PROVISIONED 
       ProvisionedThroughput: 
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5 
@@ -240,3 +241,158 @@ Resources:
       Tags:
         - Key: Name
           Value: app-dynamo-db 
+
+# elb target group
+  ELBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn:
+      - ApplicationLoadBalancer
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 40
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 5
+      Port: 80
+      Protocol: HTTP
+      Name: app-target-group
+      Targets: 
+        - Id: !Ref EC2Instance
+          Port: 80
+      TargetType: instance 
+      VpcId: !Ref myVPC  
+
+# elb security group 
+  ELBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: allow http access for load balancer
+      VpcId: !Ref myVPC 
+      SecurityGroupIngress:
+        - Description: allow http access 
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - Description: Allow all outbound traffic
+          IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0 
+      Tags:
+        - Key: Name
+          Value: load-balancer-sg
+
+# elb listener
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ELBTargetGroup
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+
+# elb
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref ELBSecurityGroup
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      Name: app-elb
+      Type: application 
+
+ # launch template 
+  launchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: app-launch-template
+      LaunchTemplateData: 
+        KeyName: app-key-pair
+        ImageId: !Ref AmazonLinuxAMIID
+        InstanceType: t2.micro
+        IamInstanceProfile: 
+          Name: !Ref iamInstanceProfile 
+        NetworkInterfaces:
+          - DeviceIndex: 0
+            AssociatePublicIpAddress: true
+            Groups:
+              - !Ref appSecurityGroup 
+            DeleteOnTermination: true
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash -ex
+            wget https://aws-tc-largeobjects.s3-us-west-2.amazonaws.com/DEV-AWS-MO-GCNv2/FlaskApp.zip
+            unzip FlaskApp.zip
+            cd FlaskApp/
+            yum -y install python3 mysql
+            pip3 install -r requirements.txt
+            amazon-linux-extras install epel
+            yum -y install stress
+            export PHOTOS_BUCKET=${s3Bucket}
+            export AWS_DEFAULT_REGION=${AWS::Region}
+            export DYNAMO_MODE=on
+            FLASK_APP=application.py /usr/local/bin/flask run --host=0.0.0.0 --port=80
+      TagSpecifications:
+        - ResourceType: launch-template 
+          Tags:
+            - Key: Description
+              Value: A web server for the employee directory application 
+
+# SNS topic and subsription 
+  snsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription: 
+        - Endpoint: allisonabiodun@gmail.com
+          Protocol: email
+      TopicName: app-sns-topic 
+
+# auto scaling group 
+  asg:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: app-asg
+      LaunchTemplate:
+       LaunchTemplateId: !Ref launchTemplate
+       Version: !GetAtt launchTemplate.LatestVersionNumber
+      VPCZoneIdentifier:
+       - !Ref PublicSubnet1
+       - !Ref PublicSubnet2 
+      TargetGroupARNs:
+        - !Ref ELBTargetGroup
+      HealthCheckType: ELB 
+      HealthCheckGracePeriod: 300
+      DesiredCapacity: "2"
+      MinSize: "2"
+      MaxSize: "4"
+      NotificationConfigurations:
+        - TopicARN: !Ref snsTopic
+          NotificationTypes:
+            - autoscaling:EC2_INSTANCE_LAUNCH
+      Tags:
+        - Key: Environment
+          Value: Test 
+          PropagateAtLaunch: true 
+
+# auto scaling policy 
+  asgTargetPolicy:
+   Type: AWS::AutoScaling::ScalingPolicy
+   Properties:
+     AutoScalingGroupName: !Ref asg
+     PolicyType: TargetTrackingScaling
+     TargetTrackingConfiguration:
+       PredefinedMetricSpecification:
+         PredefinedMetricType: ASGAverageCPUUtilization
+       TargetValue: 60.0
+
+
+
+
+

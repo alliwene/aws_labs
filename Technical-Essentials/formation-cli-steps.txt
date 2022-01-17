@@ -1,5 +1,5 @@
 - Create key pair 
-	aws ec2 create-key-pair --key-name ukey --query 'KeyMaterial' --output text > mykey.pem
+	aws ec2 create-key-pair --key-name app-key-pair --query 'KeyMaterial' --output text > app-key-pair.pem
 
 - Create stack
 	aws cloudformation create-stack \

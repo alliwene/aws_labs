@@ -1,0 +1,196 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: VPC with 2 public subnets and 2 private subnets, EC2 with HTTP and HTTPS access in public subnet to host 
+            employee directory app. 
+
+Parameters: 
+  AmazonLinuxAMIID:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+
+Resources: 
+# VPC
+  myVPC:
+    Type: AWS::EC2::VPC 
+    Properties:
+      CidrBlock: 10.1.0.0/16
+      EnableDnsSupport: true 
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: app-vpc
+
+# Internet Gateway 
+  igwApp:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: app-igw
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref myVPC
+      InternetGatewayId: !Ref igwApp 
+
+# Public Subnets
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select 
+        - 0
+        - Fn::GetAZs: !Ref 'AWS::Region'
+      VpcId: !Ref myVPC
+      MapPublicIpOnLaunch: true 
+      CidrBlock: 10.1.1.0/24
+      Tags:
+        - Key: Name
+          Value: Public Subnet 1
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select 
+        - 1
+        - Fn::GetAZs: !Ref 'AWS::Region'
+      VpcId: !Ref myVPC
+      MapPublicIpOnLaunch: true 
+      CidrBlock: 10.1.2.0/24
+      Tags:
+        - Key: Name
+          Value: Public Subnet 2
+
+# Private Subnets
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select 
+        - 0
+        - Fn::GetAZs: !Ref 'AWS::Region'
+      VpcId: !Ref myVPC
+      CidrBlock: 10.1.3.0/24
+      Tags:
+        - Key: Name
+          Value: Private Subnet 1
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select 
+        - 1
+        - Fn::GetAZs: !Ref 'AWS::Region'
+      VpcId: !Ref myVPC
+      CidrBlock: 10.1.4.0/24
+      Tags:
+        - Key: Name
+          Value: Private Subnet 2
+
+# Public route table, route and route table association
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+      Tags:
+        - Key: Name
+          Value: app-routetable-public
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref igwApp 
+
+  PublicRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+# Private route table and route table association
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+      Tags:
+        - Key: Name
+          Value: app-routetable-private
+
+  PrivateRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+# Security group and EC2 in public subnet 
+  appSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: allow http access
+      VpcId: !Ref myVPC
+      SecurityGroupIngress:
+        - Description: Allow http access
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - Description: Allow https access
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - Description: Allow all outbound traffic
+          IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0 
+      Tags:
+        - Key: Name
+          Value: web-security-group 
+    
+  iamInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - S3DynamoDBFullAccessRole 
+    
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName: app-key-pair
+      ImageId: !Ref AmazonLinuxAMIID
+      InstanceType: t2.micro
+      SubnetId: !Ref PublicSubnet1
+      SecurityGroupIds: 
+        - !Ref appSecurityGroup
+      IamInstanceProfile: !Ref iamInstanceProfile 
+      UserData: !Base64 | 
+        #!/bin/bash -ex
+        wget https://aws-tc-largeobjects.s3-us-west-2.amazonaws.com/DEV-AWS-MO-GCNv2/FlaskApp.zip
+        unzip FlaskApp.zip
+        cd FlaskApp/
+        yum -y install python3 mysql
+        pip3 install -r requirements.txt
+        amazon-linux-extras install epel
+        yum -y install stress
+        export PHOTOS_BUCKET=${SUB_PHOTOS_BUCKET}
+        export AWS_DEFAULT_REGION=us-west-2
+        export DYNAMO_MODE=on
+        FLASK_APP=application.py /usr/local/bin/flask run --host=0.0.0.0 --port=80
+      Tags:
+        - Key: Name
+          Value: employee-directory-app

@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: create ec2 instance in default vpc and allow http acees
+Description: Create EC2 instance in default vpc and allow http acees.
 
 Parameters: 
   AmazonLinuxAMIID:
@@ -32,7 +32,7 @@ Resources:
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
-      KeyName: ukey
+      KeyName: app-key-pair
       ImageId: !Ref AmazonLinuxAMIID
       InstanceType: t2.micro
       SecurityGroupIds:

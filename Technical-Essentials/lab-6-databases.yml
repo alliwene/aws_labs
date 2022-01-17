@@ -1,5 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: add S3 bucket to lab 4 infrastructure 
+Description: VPC with 2 public subnets and 2 private subnets, EC2 in public subnet to host employee directory app. 
+            Add S3 bucket and Dynamo DB table to store employee data. 
 
 Parameters: 
   AmazonLinuxAMIID:
@@ -163,19 +164,19 @@ Resources:
   appSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: allow http access
+      GroupDescription: allow http and https access
       VpcId: !Ref myVPC
       SecurityGroupIngress:
-        - Description: Allow http access
+        - Description: allow http access
           IpProtocol: tcp
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
-        - Description: Allow https access
+        - Description: allow https access 
           IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          CidrIp: 0.0.0.0/0
+          CidrIp: 0.0.0.0/0 
       SecurityGroupEgress:
         - Description: Allow all outbound traffic
           IpProtocol: "-1"
@@ -195,10 +196,10 @@ Resources:
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
-      KeyName: ukey
+      KeyName: app-key-pair
       ImageId: !Ref AmazonLinuxAMIID
       InstanceType: t2.micro
-      SubnetId: !Ref PublicSubnet1
+      SubnetId: !Ref PublicSubnet1 
       SecurityGroupIds: 
         - !Ref appSecurityGroup
       IamInstanceProfile: !Ref iamInstanceProfile 
@@ -212,10 +213,31 @@ Resources:
           pip3 install -r requirements.txt
           amazon-linux-extras install epel
           yum -y install stress
-          export PHOTOS_BUCKET=s3Bucket
+          export PHOTOS_BUCKET=${s3Bucket}
           export AWS_DEFAULT_REGION=${AWS::Region}
           export DYNAMO_MODE=on
           FLASK_APP=application.py /usr/local/bin/flask run --host=0.0.0.0 --port=80
       Tags:
         - Key: Name
           Value: employee-directory-app 
+
+# DynamoDB
+  dynamodbTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - 
+          AttributeName: id 
+          AttributeType: S 
+      KeySchema:
+        - 
+          AttributeName: id 
+          KeyType: HASH
+      BillingMode: PROVISIONED
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5 
+      TableName: Employees
+      Tags:
+        - Key: Name
+          Value: app-dynamo-db 
