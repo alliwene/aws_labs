@@ -249,8 +249,8 @@ Resources:
       DBSubnetGroupName: !Ref dbSubnetGroup
       DBName: sample
       Engine: mysql
-      MasterUsername: tutorial_user
-      MasterUserPassword: '{{resolve:ssm-secure:dbPassword:1}}'
+      MasterUsername: '{{resolve:secretsmanager:MyRDSSecret:SecretString:username}}'
+      MasterUserPassword: '{{resolve:secretsmanager:MyRDSSecret:SecretString:password}}'
       Port: 3306 
       PubliclyAccessible: false
       VPCSecurityGroups:

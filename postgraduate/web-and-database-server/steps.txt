@@ -62,7 +62,7 @@ scp -i ~/Documents/Keys/mykey.pem SamplePage.php ec2-user@52.13.46.5:/var/www/ht
 	MasterUserPassword: '{{resolve:secretsmanager:MyRDSSecret:SecretString:password}}'
 
 - Delete secret
-	aws secretsmanager delete-secret --secret-id myRDSSecret
+	aws secretsmanager delete-secret --secret-id myRDSSecret --force-delete-without-recovery
 
 - Remove deletion protection from rds instance 
 	aws rds modify-db-instance --db-instance-identifier <identifier> --no-deletion-protection 
