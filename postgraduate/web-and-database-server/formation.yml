@@ -20,7 +20,7 @@ Resources:
 # VPC with Internet Gateway
 ########### 
 
-  LabVPC1:
+  LabVPC:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: 10.0.0.0/16
@@ -32,7 +32,7 @@ Resources:
 
   IGW:
     Type: AWS::EC2::InternetGateway
-    DependsOn: LabVPC1 
+    DependsOn: LabVPC 
     Properties:
       Tags:
         - Key: Name
@@ -42,7 +42,7 @@ Resources:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       InternetGatewayId: !Ref IGW
-      VpcId: !Ref LabVPC1
+      VpcId: !Ref LabVPC
 
 ###########
 # Public Route Table
@@ -51,7 +51,7 @@ Resources:
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
-      VpcId: !Ref LabVPC1
+      VpcId: !Ref LabVPC
       Tags:
         - Key: Name
           Value: Public Route Table
@@ -71,7 +71,7 @@ Resources:
   PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref LabVPC1
+      VpcId: !Ref LabVPC
       MapPublicIpOnLaunch: true
       CidrBlock: 10.0.0.0/24
       AvailabilityZone: !Select 
@@ -114,7 +114,7 @@ Resources:
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Properties: 
-      VpcId: !Ref LabVPC1
+      VpcId: !Ref LabVPC
       Tags:
         - Key: Name
           Value: Private Route Table 
@@ -133,7 +133,7 @@ Resources:
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref LabVPC1
+      VpcId: !Ref LabVPC
       MapPublicIpOnLaunch: false
       CidrBlock: 10.0.1.0/24
       AvailabilityZone: !Select 
@@ -146,7 +146,7 @@ Resources:
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref LabVPC1
+      VpcId: !Ref LabVPC
       MapPublicIpOnLaunch: false
       CidrBlock: 10.0.2.0/24
       AvailabilityZone: !Select 
@@ -177,7 +177,7 @@ Resources:
     Properties:
       GroupName: App
       GroupDescription: Enable access to web and ssh 
-      VpcId: !Ref LabVPC1
+      VpcId: !Ref LabVPC
       SecurityGroupIngress:
         - Description: Allow ssh access 
           IpProtocol: tcp
@@ -202,7 +202,7 @@ Resources:
     Properties:
       GroupName: MySQL
       GroupDescription: Enable access to MySQL 
-      VpcId: !Ref LabVPC1
+      VpcId: !Ref LabVPC
       SecurityGroupEgress:
         - Description: Allow all outbound traffic
           IpProtocol: "-1"
@@ -254,7 +254,7 @@ Resources:
       Port: 3306 
       PubliclyAccessible: false
       VPCSecurityGroups:
-        - !Ref PrivateSecurityGroup
+        - !Ref PrivateSecurityGroup 
       StorageEncrypted: true 
       DeletionProtection: true 
       Tags:
@@ -296,7 +296,10 @@ Resources:
 # Outputs
 ###########
 
-# Outputs:
-
-#   LabVPCDefaultSecurityGroup:
-#     Value: !Sub ${LabVPC1.DefaultSecurityGroup}
+Outputs:
+  Url:
+    Value: !Sub 'http://${Instance.PublicIp}' 
+  dnsEC2:
+    Value: !Sub 'http://${Instance.PublicDnsName}' 
+  rdsEndpoint:
+    Value: !Sub ${rdsDBInstance.Endpoint.Address} 

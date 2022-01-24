@@ -190,7 +190,7 @@ Resources:
     Properties:
       Path: /
       Roles:
-        - S3DynamoDBFullAccessRole 
+        - S3DynamoDBFullAccessRole  
     
 
   EC2Instance:

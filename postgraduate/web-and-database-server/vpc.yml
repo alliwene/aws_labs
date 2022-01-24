@@ -1,0 +1,29 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Set up VPC with flow logs  
+
+
+Resources:
+
+###########
+# VPC with Internet Gateway
+########### 
+
+  LabVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: Lab VPC
+
+  CFlowLog:
+    Type: 'AWS::EC2::FlowLog'
+    Properties:
+      LogDestinationType: cloud-watch-logs 
+      DeliverLogsPermissionArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/VPCFlowLogsRole'
+      LogGroupName: lab-vpc-flow-log
+      ResourceId: !Ref LabVPC
+      ResourceType: 'VPC'
+      TrafficType: REJECT 
