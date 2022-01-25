@@ -23,9 +23,9 @@ def lambda_handler(event, context):
         sns = boto3.client('sns')
         subject = "Word Count Result"
         sns_response = sns.publish(
-        TargetArn='arn:aws:sns:us-west-2:097619393403:count-words-topic',
-        Message= str(sns_message),
-        Subject= subject 
+            TargetArn='arn:aws:sns:us-west-2:097619393403:count-words-topic',
+            Message= str(sns_message),
+            Subject= subject 
         ) 
 
     except Exception as e:
