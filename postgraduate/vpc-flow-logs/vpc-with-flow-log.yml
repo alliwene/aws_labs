@@ -19,12 +19,18 @@ Resources:
         - Key: Name
           Value: Lab VPC
 
+  LogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: lab-vpc-flow-log
+      RetentionInDays: 14 
+
   CFlowLog:
     Type: 'AWS::EC2::FlowLog'
     Properties:
       LogDestinationType: cloud-watch-logs 
       DeliverLogsPermissionArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/VPCFlowLogsRole'
-      LogGroupName: lab-vpc-flow-log
+      LogGroupName: !Ref LogGroup 
       ResourceId: !Ref LabVPC
       ResourceType: 'VPC'
       TrafficType: REJECT 

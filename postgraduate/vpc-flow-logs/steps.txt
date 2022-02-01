@@ -1,0 +1,15 @@
+- Create log group
+	aws logs create-log-group --log-group-name lab-vpc-flow-log
+
+- Get flow log arn
+	aws logs describe-log-groups --log-group-name-prefix lab-vpc-flow-log --query "logGroups[0].arn"
+
+- Set log group retention; number of days to retain log events
+	aws logs put-retention-policy --log-group-name lab-vpc-flow-log --retention-in-days 14 
+
+- Create role and attach trust policy to it; this role enables vpc to push logs to Cloudwatch logs 
+	aws iam create-role --role-name VPCFlowLogsRole --assume-role-policy-document file://flowlogs-trust-policy.json \
+    --description "Allow resources in VPC to publish logs to Cloudwatch logs"
+
+- Create an inline permissions policy for the role
+    aws iam put-role-policy --role-name VPCFlowLogsRole --policy-name LogsPolicy --policy-document file://flowlogs-policy.json
