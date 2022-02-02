@@ -7,7 +7,7 @@
 # Dynamic ssm parameter in cloudformation
 	'{{resolve:ssm-secure:dbPassword:1}}' 
 
-- Create stack
+- Create stack 
 	aws cloudformation create-stack \
 	--stack-name db-stack \
 	--template-body file://formation.yml \
