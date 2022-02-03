@@ -2,15 +2,16 @@
 	aws ec2 create-key-pair --key-name mykey --query 'KeyMaterial' --output text > mykey.pem
 
 - Add database password to systems manager parameter store
-	aws ssm put-parameter --name dbPassword --type String --value "<password>"
+	aws ssm put-parameter --name ssbRDS --type SecureString --value "<password>"
 
-# Dynamic ssm parameter in cloudformation
-	'{{resolve:ssm-secure:dbPassword:1}}' 
+# Dynamic ssm parameter in cloudformation; works for database instance password 
+	'{{resolve:ssm-secure:ssbRDS:1}}'  
 
 - Create stack 
 	aws cloudformation create-stack \
 	--stack-name db-stack \
 	--template-body file://formation.yml \
+	--parameters  ParameterKey=DataBaseUsername,ParameterValue=tutorial_user \
 	--disable-rollback 
 
 - Track create progress 
@@ -29,8 +30,12 @@
 	aws cloudformation update-stack \
 	--stack-name db-stack \
 	--template-body file://formation.yml \
-	--disable-rollback 
+	--parameters  ParameterKey=DataBaseUsername,ParameterValue=tutorial_user \
+	--disable-rollback  
 
+- Remove deletion protection from rds instance 
+	aws rds modify-db-instance --db-instance-identifier tutorial-db-instance --no-deletion-protection
+	
 - Delete stack 
 	aws cloudformation delete-stack \
 	--stack-name db-stack 
@@ -45,9 +50,16 @@
 	--query "Reservations[*].Instances[*].PublicIpAddress" \
 	--output text 
 
+mkdir /var/www/inc/
+scp -i ~/Downloads/labsuser.pem dbinfo.inc ec2-user@18.237.2.72:/var/www/inc/dbinfo.inc
+scp -i ~/Downloads/labsuser.pem SamplePage.php ec2-user@18.237.2.72:/var/www/html/SamplePage.php
 
-scp -i ~/Documents/Keys/mykey.pem dbinfo.inc ec2-user@52.13.46.5:/var/www/inc/dbinfo.inc
-scp -i ~/Documents/Keys/mykey.pem SamplePage.php ec2-user@52.13.46.5:/var/www/html/SamplePage.php
+
+
+
+
+
+
 
 
 ###########################################
@@ -64,8 +76,7 @@ scp -i ~/Documents/Keys/mykey.pem SamplePage.php ec2-user@52.13.46.5:/var/www/ht
 - Delete secret
 	aws secretsmanager delete-secret --secret-id myRDSSecret --force-delete-without-recovery
 
-- Remove deletion protection from rds instance 
-	aws rds modify-db-instance --db-instance-identifier <identifier> --no-deletion-protection 
+
 
 
 
